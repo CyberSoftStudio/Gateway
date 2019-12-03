@@ -1,0 +1,6 @@
+.idea
+requests.txt
+node_modules/*
+.vscode
+.nyc_output
+config.json

@@ -1,0 +1,37 @@
+version: "3.4"
+volumes:
+  filebeat_data:
+
+services:
+  livechat:
+    image: livechat:latest
+    hostname: livechat
+    container_name: livechat
+    restart: always
+    network_mode: bridge
+    ports:
+      - "5500:5500"
+    command: sh -c "npm start"
+    #environment:
+    #  - MAILSCHEDULER_ENV_GOCRED_BASE64=${MAILSCHEDULER_ENV_GOCRED_BASE64}
+    #volumes:
+    #  - /opt/rocket_whatsapp_syncer:/opt
+
+  fb:
+    image: myfilebeat:6.5.1.2019020805
+    hostname: fb.livechat
+    container_name: fb.livechat
+    network_mode: bridge
+    restart: always
+  #  command: "tail -f /etc/passwd"
+    command: "/usr/local/bin/docker-entrypoint -e"
+    working_dir: "/usr/share/filebeat"
+    volumes:
+     - "filebeat_data:/usr/share/filebeat/data:rw"
+     - "/var/lib/docker/containers:/usr/share/filebeat/dockerlogs:ro"
+     - "/var/run/docker.sock:/var/run/docker.sock"
+    environment:
+      - FB_ENV_DEPLOYMENT_VERSION=1.0.18111902
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/share/filebeat
+    labels:
+       com.voicespin.description: livechat

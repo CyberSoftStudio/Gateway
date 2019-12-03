@@ -1,0 +1,80 @@
+variables:
+  PROD_IMAGE: eu.gcr.io/key-cistern-95411/livechat:${CI_COMMIT_SHORT_SHA}
+
+
+stages:
+  - build
+  - test
+  - deploy-prod
+  - build-prod
+  - deploy
+
+job docker-build-dev:
+  stage: build
+  only:
+    refs:
+      - dev
+      - test_ci
+  before_script:
+#    - env | grep '^VS_APPS_CONFIG_JSON_DEV_BASE64=' | sed -e  's/VS_APPS_CONFIG_JSON_DEV_BASE64=//g' | base64 -d > config.json
+#    - cd /opt/rocket_whatsapp_syncer
+  script:
+    - docker build --no-cache -t livechat:latest .
+  after_script:
+    - docker image prune -f
+  tags:
+    - shell
+
+job test-dev:
+  stage: test
+  only:
+    refs:
+      - dev
+      - test_ci
+  script:
+    - docker-compose -f docker-compose-test.yml up -d --force-recreate
+  after_script:
+    - docker-compose -f docker-compose-test.yml stop
+    - docker-compose -f docker-compose-test.yml rm -f
+  tags:
+    - shell
+
+job deploy-to-dev:
+  stage: deploy
+  only:
+    refs:
+      - dev
+      - test_ci
+  before_script:
+#    - export LOCAL_ENV=$(cat /opt/.env | base64 -w 0)
+#    - env | grep '^LOCAL_ENV=' | sed -e 's/LOCAL_ENV=//g' | base64 -d > .env
+#    - cd /opt/rocket_whatsapp_syncer
+
+  script:
+    - docker-compose up -d --force-recreate
+  tags:
+    - shell
+
+job build-prod:
+  stage: build-prod
+  only:
+    refs:
+      - master
+  script:
+    - docker build --no-cache -t livechat:prod.${CI_COMMIT_SHORT_SHA} .
+  after_script:
+    - docker image prune -f
+  tags:
+    - shell
+
+job deploy-prod:
+  stage: deploy-prod
+  only:
+    refs:
+      - master
+  script:
+    - sudo -u juancarlos docker tag livechat:prod.${CI_COMMIT_SHORT_SHA} ${PROD_IMAGE}
+    - sudo -u juancarlos docker push ${PROD_IMAGE}
+    - sudo -u juancarlos kubectl set image deployment livechat livechat=${PROD_IMAGE} --namespace livechat
+  tags:
+    - shell
